@@ -111,6 +111,52 @@
   background: var(--ph-hover);
 }
 
+/* ---- report-filter bar ---- */
+.ph-report-bar-host {
+  flex: 0 0 auto;
+}
+.ph-report-bar-host[hidden] {
+  display: none;
+}
+.ph-report-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--ph-bg-alt);
+  border-bottom: 1px solid var(--ph-border);
+}
+.ph-report-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: var(--ph-bg);
+  color: var(--ph-fg);
+  border: 1px solid var(--ph-border);
+  border-radius: 9999px;
+  font-size: 12px;
+  font-family: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+.ph-report-chip:hover {
+  background: var(--ph-hover);
+  border-color: var(--ph-border-strong);
+}
+.ph-report-chip-icon {
+  display: inline-flex;
+  color: var(--ph-fg-muted);
+}
+.ph-report-chip-icon svg {
+  width: 13px;
+  height: 13px;
+}
+.ph-report-chip-label {
+  font-weight: 500;
+}
+
 /* ---- layout ---- */
 .ph-main {
   flex: 1 1 auto;

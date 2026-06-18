@@ -65,10 +65,14 @@ const FEATURES = [
   },
 ];
 
+/**
+ * Measured npm / shipped sizes (Jun 2026 benchmark).
+ * Pvotly: full widget min+gzip. Others: npm unpacked install.
+ */
 const BENCH = [
-  { label: 'Pvotly', ms: 86, w: '24%' },
-  { label: 'Library B', ms: 240, w: '62%' },
-  { label: 'Library C', ms: 410, w: '100%' },
+  { label: 'Pvotly', kb: 26, w: '0.65%' },
+  { label: 'react-pivottable', kb: 233, w: '5.8%' },
+  { label: 'WebDataRocks', kb: 4000, w: '100%' },
 ];
 
 const PKG = {
@@ -219,14 +223,14 @@ function Bars() {
           marginBottom: 22,
         }}
       >
-        Time to pivot · representative
+        Shipped size · from npm
       </div>
       {BENCH.map((b) => (
         <div key={b.label}>
           <div className="lp-bar-row">
             <span style={{ color: 'var(--pv-fg)', fontWeight: 500 }}>{b.label}</span>
             <span className="ms">
-              <CountUp to={b.ms} dur={1100} /> ms
+              <CountUp to={b.kb} dur={1100} /> KB
             </span>
           </div>
           <div className="lp-bar">
@@ -235,7 +239,8 @@ function Bars() {
         </div>
       ))}
       <div style={{ marginTop: 0, fontSize: 11.5, color: 'var(--pv-fg-faint)', lineHeight: 1.5 }}>
-        Synthetic dataset on an M2 laptop. Measure on your own data — exports are deterministic.
+        Shipped size from npm — Pvotly engine + UI min+gzip (26 KB); react-pivottable and WebDataRocks
+        unpacked install. Pivot rebuild on the same 100k-row dataset: ~106 ms (Pvotly, 2 measures).
       </div>
     </div>
   );
@@ -534,7 +539,7 @@ export default function Landing({ theme, onToggleTheme }: LandingProps) {
               </div>
               <div>
                 <div className="lp-stat-n accent">
-                  <CountUp to={86} />
+                  <CountUp to={106} />
                   <span style={{ fontSize: 24 }}>ms</span>
                 </div>
                 <div className="lp-stat-l">single-pass pivot</div>
