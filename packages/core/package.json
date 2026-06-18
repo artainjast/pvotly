@@ -1,8 +1,9 @@
 {
   "name": "@pvotly/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Framework-agnostic pivot table engine: data model, aggregation, filtering, sorting, formatting and calculated measures. Zero dependencies.",
   "license": "MIT",
+  "homepage": "https://artainjast.github.io/pvotly/",
   "author": "pvotly contributors",
   "type": "module",
   "sideEffects": false,
@@ -16,7 +17,11 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "keywords": [
     "pivot",
     "pivot-table",
@@ -35,7 +40,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/artainjast/pivot-table",
+    "url": "git+https://github.com/artainjast/pvotly.git",
     "directory": "packages/core"
   },
   "publishConfig": {

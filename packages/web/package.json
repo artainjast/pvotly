@@ -1,11 +1,14 @@
 {
   "name": "@pvotly/web",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Framework-agnostic pivot table UI: drag-and-drop field list, grid renderer, filters, conditional formatting, export and themes. Built on @pvotly/core.",
   "license": "MIT",
+  "homepage": "https://artainjast.github.io/pvotly/",
   "author": "pvotly contributors",
   "type": "module",
-  "sideEffects": ["**/*.css"],
+  "sideEffects": [
+    "**/*.css"
+  ],
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -20,8 +23,19 @@
     "./global.css": "./dist/pvotly.global.css",
     "./umd": "./dist/pvotly.umd.js"
   },
-  "files": ["dist", "README.md", "LICENSE"],
-  "keywords": ["pivot", "pivot-table", "pivot-grid", "drag-and-drop", "data-grid", "olap"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "pivot",
+    "pivot-table",
+    "pivot-grid",
+    "drag-and-drop",
+    "data-grid",
+    "olap"
+  ],
   "scripts": {
     "build": "tsup && node scripts/wrap-umd.mjs",
     "dev": "tsup --watch",
@@ -33,7 +47,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/artainjast/pivot-table",
+    "url": "git+https://github.com/artainjast/pvotly.git",
     "directory": "packages/web"
   },
   "publishConfig": {

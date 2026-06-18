@@ -1,8 +1,9 @@
 {
   "name": "@pvotly/react",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "React wrapper for pvotly — a declarative <PivotTable /> component with hooks and refs.",
   "license": "MIT",
+  "homepage": "https://artainjast.github.io/pvotly/",
   "author": "pvotly contributors",
   "type": "module",
   "sideEffects": false,
@@ -16,8 +17,19 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
-  "keywords": ["pivot", "pivot-table", "react", "react-component", "data-grid", "olap"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "pivot",
+    "pivot-table",
+    "react",
+    "react-component",
+    "data-grid",
+    "olap"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -40,7 +52,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/artainjast/pivot-table",
+    "url": "git+https://github.com/artainjast/pvotly.git",
     "directory": "packages/react"
   },
   "publishConfig": {
