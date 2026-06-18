@@ -1,0 +1,46 @@
+{
+  "name": "@pvotly/vue",
+  "version": "0.1.0",
+  "description": "Vue 3 wrapper for pvotly — a declarative <PivotTable /> component.",
+  "license": "MIT",
+  "author": "pvotly contributors",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "keywords": ["pivot", "pivot-table", "vue", "vue-component", "data-grid", "olap"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pvotly/core": "workspace:*",
+    "@pvotly/web": "workspace:*"
+  },
+  "peerDependencies": {
+    "vue": ">=3"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vue": "^3.5.13"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/artainjast/pivot-table",
+    "directory": "packages/vue"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

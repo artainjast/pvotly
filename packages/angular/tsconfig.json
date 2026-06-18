@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "baseUrl": ".",
+    "paths": {
+      "@pvotly/core": ["../core/src/index.ts"],
+      "@pvotly/web": ["../web/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

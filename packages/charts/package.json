@@ -1,0 +1,46 @@
+{
+  "name": "@pvotly/charts",
+  "version": "0.1.0",
+  "description": "Chart-ready data normalization + a pluggable rendering adapter API for pvotly. Ships a zero-dependency built-in SVG adapter and bring-your-own adapters (Chart.js, ECharts, D3, …).",
+  "license": "MIT",
+  "author": "pvotly contributors",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "keywords": ["pivot", "pivot-table", "chart", "charts", "svg", "chart.js", "echarts", "data-viz", "olap"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pvotly/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "chart.js": ">=4"
+  },
+  "peerDependenciesMeta": {
+    "chart.js": {
+      "optional": true
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/artainjast/pivot-table",
+    "directory": "packages/charts"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

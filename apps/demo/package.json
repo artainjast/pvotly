@@ -1,0 +1,26 @@
+{
+  "name": "@pvotly/demo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Interactive playground for pvotly.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@pvotly/charts": "workspace:*",
+    "@pvotly/core": "workspace:*",
+    "@pvotly/react": "workspace:*",
+    "@pvotly/web": "workspace:*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.5"
+  }
+}

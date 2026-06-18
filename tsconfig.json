@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@pvotly/core": ["packages/core/src/index.ts"],
+      "@pvotly/web": ["packages/web/src/index.ts"],
+      "@pvotly/react": ["packages/react/src/index.ts"]
+    }
+  },
+  "include": [],
+  "files": []
+}

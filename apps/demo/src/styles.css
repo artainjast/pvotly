@@ -1,0 +1,179 @@
+/* Docs shell — shares the landing's token system (.pvroot) so light/dark and
+ * fonts stay consistent between the marketing page and the playground. */
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+.pvroot {
+  background: var(--pv-bg);
+  color: var(--pv-fg);
+  font-family: var(--fc-font-sans);
+  min-height: 100vh;
+}
+
+.docs {
+  display: grid;
+  grid-template-columns: 264px 1fr;
+  min-height: 100vh;
+}
+
+.docs-sidebar {
+  background: var(--pv-surface);
+  border-right: 1px solid var(--pv-border);
+  padding: 20px 16px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: auto;
+}
+.docs-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--fc-font-display);
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  color: var(--pv-fg-strong);
+  text-decoration: none;
+}
+.docs-logo {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, var(--pv-accent), var(--pv-purple));
+}
+.docs-tagline {
+  color: var(--pv-fg-muted);
+  font-size: 12px;
+  margin: 8px 0 14px;
+}
+.docs-sidebar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.docs-home {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--pv-fg-muted);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--pv-border);
+  background: var(--pv-surface-2);
+}
+.docs-home:hover {
+  color: var(--pv-fg-strong);
+  border-color: var(--pv-fg-faint);
+}
+.docs-theme {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--pv-border);
+  background: var(--pv-surface-2);
+  color: var(--pv-fg);
+  cursor: pointer;
+  font-size: 15px;
+}
+.docs-theme:hover {
+  border-color: var(--pv-fg-faint);
+}
+.docs-group {
+  margin-bottom: 16px;
+}
+.docs-group-title {
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--pv-fg-faint);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.docs-link {
+  display: block;
+  padding: 6px 10px;
+  border-radius: 7px;
+  color: var(--pv-fg);
+  text-decoration: none;
+  font-size: 14px;
+}
+.docs-link:hover {
+  background: var(--pv-surface-2);
+}
+.docs-link.active {
+  background: var(--pv-accent);
+  color: #fff;
+}
+
+.docs-main {
+  padding: 32px 40px;
+  max-width: 1100px;
+}
+.docs-header h1 {
+  margin: 0 0 6px;
+  font-family: var(--fc-font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-size: 28px;
+  color: var(--pv-fg-strong);
+}
+.docs-header p {
+  color: var(--pv-fg-muted);
+  margin: 0 0 16px;
+  max-width: 70ch;
+  line-height: 1.5;
+}
+.docs-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--pv-border);
+  margin-bottom: 20px;
+}
+.docs-tabs button {
+  background: none;
+  border: 0;
+  padding: 8px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--pv-fg-muted);
+  border-bottom: 2px solid transparent;
+}
+.docs-tabs button.active {
+  color: var(--pv-accent);
+  border-bottom-color: var(--pv-accent);
+  font-weight: 600;
+}
+.docs-live {
+  background: var(--pv-surface);
+  border: 1px solid var(--pv-border);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: var(--pv-sh-sm);
+}
+.docs-code {
+  background: #0d1117;
+  color: #c9d1d9;
+  padding: 18px 20px;
+  border-radius: 12px;
+  overflow: auto;
+  font-size: 13px;
+  line-height: 1.55;
+  font-family: var(--fc-font-mono);
+}
+
+@media (max-width: 800px) {
+  .docs {
+    grid-template-columns: 1fr;
+  }
+  .docs-sidebar {
+    position: static;
+    height: auto;
+  }
+}

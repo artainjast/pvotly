@@ -1,0 +1,17 @@
+node_modules/
+dist/
+coverage/
+.turbo/
+*.tsbuildinfo
+.DS_Store
+.idea/
+.vscode/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+playwright-report/
+test-results/
+.playwright/
+.vite/
+.cache/
+.omc/

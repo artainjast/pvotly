@@ -1,0 +1,46 @@
+{
+  "name": "@pvotly/angular",
+  "version": "0.1.0",
+  "description": "Angular wrapper for pvotly — a standalone <pvotly-table> component built on @pvotly/web.",
+  "license": "MIT",
+  "author": "pvotly contributors",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "keywords": ["pivot", "pivot-table", "angular", "angular-component", "data-grid", "olap"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pvotly/core": "workspace:*",
+    "@pvotly/web": "workspace:*"
+  },
+  "peerDependencies": {
+    "@angular/core": ">=16"
+  },
+  "devDependencies": {
+    "@angular/core": "^18.2.0",
+    "reflect-metadata": "^0.2.2",
+    "typescript": "^5.6.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/artainjast/pivot-table",
+    "directory": "packages/angular"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

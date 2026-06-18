@@ -1,0 +1,50 @@
+{
+  "name": "@pvotly/svelte",
+  "version": "0.1.0",
+  "description": "Svelte bindings for pvotly — a `use:pvotly` action that mounts the @pvotly/web widget.",
+  "license": "MIT",
+  "author": "pvotly contributors",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "keywords": ["pivot", "pivot-table", "svelte", "svelte-action", "data-grid", "olap"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pvotly/core": "workspace:*",
+    "@pvotly/web": "workspace:*"
+  },
+  "peerDependencies": {
+    "svelte": ">=4"
+  },
+  "peerDependenciesMeta": {
+    "svelte": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/artainjast/pivot-table",
+    "directory": "packages/svelte"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

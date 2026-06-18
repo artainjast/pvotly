@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@pvotly/core": ["../../packages/core/src/index.ts"],
+      "@pvotly/web": ["../../packages/web/src/index.ts"],
+      "@pvotly/react": ["../../packages/react/src/index.ts"],
+      "@pvotly/charts": ["../../packages/charts/src/index.ts"]
+    }
+  },
+  "include": ["src", "vite.config.ts"]
+}
