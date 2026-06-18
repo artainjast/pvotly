@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
 import { SAMPLES, SAMPLES_BY_GROUP, findSample } from './samples';
 import Landing from './Landing';
+import CodeBlock from './CodeBlock';
+import SandboxPanel from './SandboxPanel';
+import { GITHUB_URL, hasSandbox, openSandbox } from './sandbox';
 
 type Theme = 'light' | 'dark';
+type Tab = 'live' | 'code' | 'sandbox';
 
 function currentId(): string {
   return window.location.hash.replace(/^#\/?/, '');
@@ -16,7 +20,7 @@ function initialTheme(): Theme {
 
 export default function App() {
   const [id, setId] = useState(currentId);
-  const [tab, setTab] = useState<'live' | 'code'>('live');
+  const [tab, setTab] = useState<Tab>('live');
   const [theme, setTheme] = useState<Theme>(initialTheme);
 
   useEffect(() => {
@@ -51,8 +55,8 @@ export default function App() {
 
 interface DocsProps {
   id: string;
-  tab: 'live' | 'code';
-  setTab: (t: 'live' | 'code') => void;
+  tab: Tab;
+  setTab: (t: Tab) => void;
   theme: Theme;
   onToggleTheme: () => void;
 }
@@ -70,6 +74,15 @@ function Docs({ id, tab, setTab, theme, onToggleTheme }: DocsProps) {
         <div className="docs-sidebar-actions">
           <a className="docs-home" href="#/">
             ← Home
+          </a>
+          <a
+            className="docs-github"
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label="GitHub repository"
+          >
+            GitHub
           </a>
           <button className="docs-theme" onClick={onToggleTheme} aria-label="Toggle theme">
             {theme === 'dark' ? '☀' : '☾'}
@@ -115,18 +128,42 @@ function Docs({ id, tab, setTab, theme, onToggleTheme }: DocsProps) {
                 >
                   Code
                 </button>
+                {hasSandbox(sample) && (
+                  <button
+                    className={tab === 'sandbox' ? 'active' : ''}
+                    onClick={() => setTab('sandbox')}
+                    data-testid="tab-sandbox"
+                  >
+                    Sandbox
+                  </button>
+                )}
               </div>
             </header>
 
-            {tab === 'live' ? (
+            {tab === 'live' && (
               <section className="docs-live" data-testid="live">
                 <sample.Component />
               </section>
-            ) : (
-              <pre className="docs-code" data-testid="code">
-                <code>{sample.meta.code}</code>
-              </pre>
             )}
+
+            {tab === 'code' && (
+              <section className="docs-code-section">
+                {hasSandbox(sample) && (
+                  <div className="docs-code-actions">
+                    <button
+                      className="docs-stackblitz"
+                      type="button"
+                      onClick={() => openSandbox(sample)}
+                    >
+                      ⚡ Open in StackBlitz
+                    </button>
+                  </div>
+                )}
+                <CodeBlock code={sample.meta.code} theme={theme} />
+              </section>
+            )}
+
+            {tab === 'sandbox' && <SandboxPanel sample={sample} theme={theme} />}
           </>
         )}
       </main>

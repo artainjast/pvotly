@@ -869,18 +869,19 @@ class GridView {
       });
     }
 
-    // Measure each frozen column's rendered width from a representative cell.
+    // Frozen column widths are deterministic — every leading/value cell is
+    // width-pinned via `widthStyle`, so derive offsets from the known widths
+    // instead of measuring. Measuring here (getBoundingClientRect) forced a
+    // synchronous reflow on every scroll frame and was the main scroll-jank
+    // source on large grids.
     const widths: number[] = [];
     for (let i = 0; i < totalFrozen; i++) {
-      const cell = this.scroller.querySelector<HTMLElement>(`[data-freeze="${i}"]`);
-      const measured = cell?.getBoundingClientRect().width ?? 0;
       widths[i] =
-        measured ||
-        (i < leading
+        i < leading
           ? i === 0 && m.gutter
             ? this.gutterWidth()
             : this.rowHeadWidth()
-          : this.colWidth(m.valueColumns[i - leading]!));
+          : this.colWidth(m.valueColumns[i - leading]!);
     }
 
     let offset = 0;
