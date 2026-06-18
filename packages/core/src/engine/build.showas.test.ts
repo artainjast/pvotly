@@ -264,6 +264,35 @@ describe('buildGrid showDataAs (rows[country] x cols[category], sum revenue)', (
       const seq = grid.rowLeaves.map((r) => grid.getCell(r, bikes, m).displayValue as number);
       for (let i = 1; i < seq.length; i++) expect(seq[i]!).toBeGreaterThanOrEqual(seq[i - 1]!);
     });
+
+    it('skips subtotal lines in a multi-level axis (no double-count)', () => {
+      // rows[country > category], classic layout with row subtotals on. A
+      // subtotal is the aggregate of its leaves, so it must NOT be folded into
+      // the running total — otherwise its children get counted twice.
+      const dataset = new Dataset({ data: SALES });
+      const grid = buildGrid(dataset, {
+        dataSource: { data: SALES },
+        slice: {
+          rows: [{ uniqueName: 'country' }, { uniqueName: 'category' }],
+          measures: [{ uniqueName: 'revenue', aggregation: 'sum', showDataAs: 'runningTotalInColumn' }],
+        },
+        options: { grid: { type: 'classic', showTotals: 'rows' } },
+      });
+      const m = grid.measures[0]!;
+      const col = grid.columnLeaves[0]!; // implicit single "all" column
+
+      // Leaf order (asc): Canada/Bikes 200, Canada/Cars 300, USA/Bikes 50, USA/Cars 300.
+      // Running total over leaves only: 200, 500, 550, 850 — the Canada subtotal
+      // (500) sitting between them is NOT added.
+      const leaves = grid.rowLeaves.filter((l) => !l.isTotal && !l.isGrandTotal);
+      const seq = leaves.map((l) => grid.getCell(l, col, m).displayValue as number);
+      expect(seq).toEqual([200, 500, 550, 850]);
+
+      // Subtotal lines keep their own raw aggregate (untouched by the running pass).
+      const canadaSub = grid.rowLeaves.find((l) => l.caption === 'Canada' && l.isTotal);
+      expect(canadaSub).toBeDefined();
+      expect(grid.getCell(canadaSub!, col, m).displayValue).toBe(RAW.canadaTotal); // 500
+    });
   });
 
   /* ------------------------------------------------------------------ */

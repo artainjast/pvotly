@@ -21,6 +21,13 @@ export function StyledPivot({ data }) {
     headerBackground: '#fff1f2',
     grandTotalBackground: '#ffe4e6',
     radius: 12,
+    // Filter bar / chips styled the same way — no CSS overrides:
+    filters: {
+      chipBackground: '#fff1f2',
+      chipBorder: '#fecdd3',
+      chipForeground: '#e11d48',
+      chipRadius: 8,
+    },
   });
 
   return (
@@ -34,12 +41,13 @@ export function StyledPivot({ data }) {
       {/* Everything is styled via props — no CSS required. */}
       <PivotTable
         theme="light"        // "light" | "dark" | "minimal"
-        tokens={tokens}      // typed ThemeTokens object
+        tokens={tokens}      // typed ThemeTokens object (incl. tokens.filters)
         dataSource={{ data }}
         slice={{
           rows: [{ uniqueName: 'country' }],
           columns: [{ uniqueName: 'category' }],
           measures: [{ uniqueName: 'revenue', aggregation: 'sum' }],
+          reportFilters: [{ uniqueName: 'channel' }],
         }}
       />
     </>
@@ -111,6 +119,35 @@ export default function Styling() {
             onChange={(e) => set({ radius: Number(e.target.value) })}
           />
         </label>
+        <label style={ctl}>
+          Filter chip
+          <input
+            type="color"
+            value={tokens.filters?.chipBackground ?? '#eef2ff'}
+            onChange={(e) =>
+              set({
+                filters: {
+                  ...tokens.filters,
+                  chipBackground: e.target.value,
+                  chipBorder: e.target.value,
+                  chipForeground: tokens.accent,
+                },
+              })
+            }
+          />
+        </label>
+        <label style={ctl}>
+          Chip radius
+          <input
+            type="range"
+            min={0}
+            max={20}
+            value={Number(tokens.filters?.chipRadius ?? 9)}
+            onChange={(e) =>
+              set({ filters: { ...tokens.filters, chipRadius: Number(e.target.value) } })
+            }
+          />
+        </label>
         <span style={{ display: 'inline-flex', gap: 6 }}>
           {Object.keys(PRESETS).map((name) => (
             <button key={name} onClick={() => set({ ...PRESETS[name] })} style={presetBtn}>
@@ -129,6 +166,7 @@ export default function Styling() {
           rows: [{ uniqueName: 'country' }],
           columns: [{ uniqueName: 'category' }],
           measures: [{ uniqueName: 'revenue', aggregation: 'sum' }],
+          reportFilters: [{ uniqueName: 'channel' }],
         }}
       />
     </div>

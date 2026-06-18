@@ -460,6 +460,14 @@ function applyShowAs(
   cellIndex: Map<string, PivotCell>,
   measureNumeric: (r: string, c: string, m: EffectiveMeasure) => number | null,
 ): void {
+  // Running totals, ranks and prev-deltas must skip *subtotal* lines: a subtotal
+  // is the aggregate of the leaves around it, so folding it into the accumulator
+  // (or ranking it against its own children) double-counts those leaves. The
+  // grand-total line is intentionally retained as a final accumulating/ranked
+  // entry (see build.showas.test.ts).
+  const dataRows = rowEntries.filter((e) => !e.isSubtotal);
+  const dataCols = colEntries.filter((e) => !e.isSubtotal);
+
   for (const m of measures) {
     if (m.showDataAs === 'raw') continue;
     const grand = measureNumeric('', '', m);
@@ -487,9 +495,9 @@ function applyShowAs(
         }
       }
     } else if (m.showDataAs === 'runningTotalInColumn') {
-      for (const c of colEntries) {
+      for (const c of dataCols) {
         let acc = 0;
-        for (const r of rowEntries) {
+        for (const r of dataRows) {
           const v = measureNumeric(r.node.key, c.node.key, m) ?? 0;
           acc += v;
           const cell = cellIndex.get(`${r.node.key}|${c.node.key}|${m.uniqueName}`);
@@ -497,9 +505,9 @@ function applyShowAs(
         }
       }
     } else if (m.showDataAs === 'runningTotalInRow') {
-      for (const r of rowEntries) {
+      for (const r of dataRows) {
         let acc = 0;
-        for (const c of colEntries) {
+        for (const c of dataCols) {
           const v = measureNumeric(r.node.key, c.node.key, m) ?? 0;
           acc += v;
           const cell = cellIndex.get(`${r.node.key}|${c.node.key}|${m.uniqueName}`);
@@ -507,14 +515,14 @@ function applyShowAs(
         }
       }
     } else if (m.showDataAs === 'rankInColumn') {
-      for (const c of colEntries) rankSequence(rowEntries, c, m, cellIndex, measureNumeric, 'col');
+      for (const c of dataCols) rankSequence(dataRows, c, m, cellIndex, measureNumeric, 'col');
     } else if (m.showDataAs === 'rankInRow') {
-      for (const r of rowEntries) rankSequence(colEntries, r, m, cellIndex, measureNumeric, 'row');
+      for (const r of dataRows) rankSequence(dataCols, r, m, cellIndex, measureNumeric, 'row');
     } else if (m.showDataAs === 'differenceFromPrevColumn') {
       // For each row, step across columns: null in the first column.
-      for (const r of rowEntries) {
+      for (const r of dataRows) {
         let prev: number | null = null;
-        for (const c of colEntries) {
+        for (const c of dataCols) {
           const v = measureNumeric(r.node.key, c.node.key, m);
           const cell = cellIndex.get(`${r.node.key}|${c.node.key}|${m.uniqueName}`);
           if (cell) cell.displayValue = prev == null || v == null ? null : v - prev;
@@ -523,9 +531,9 @@ function applyShowAs(
       }
     } else if (m.showDataAs === 'differenceFromPrevRow') {
       // For each column, step down rows: null in the first row.
-      for (const c of colEntries) {
+      for (const c of dataCols) {
         let prev: number | null = null;
-        for (const r of rowEntries) {
+        for (const r of dataRows) {
           const v = measureNumeric(r.node.key, c.node.key, m);
           const cell = cellIndex.get(`${r.node.key}|${c.node.key}|${m.uniqueName}`);
           if (cell) cell.displayValue = prev == null || v == null ? null : v - prev;

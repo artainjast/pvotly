@@ -158,9 +158,12 @@ export function formatValue(value: number | DataValue, format?: NumberFormat, lo
 
   let fixed = abs.toFixed(Math.max(0, decimals));
 
-  // Trim to maxDecimalPlaces if only that was provided.
+  // Trim to maxDecimalPlaces if only that was provided. Guard against very large
+  // magnitudes where String(parseFloat()) yields exponential notation ("1e+21"),
+  // which the split/grouping below would then mangle — keep the fixed form there.
   if (f.decimalPlaces == null && f.maxDecimalPlaces != null) {
-    fixed = String(parseFloat(fixed));
+    const trimmed = parseFloat(fixed);
+    if (Math.abs(trimmed) < 1e21) fixed = String(trimmed);
   }
 
   const [intPartRaw, fracPart = ''] = fixed.split('.');

@@ -22,8 +22,8 @@ import './styles/themes.css';
 export { PivotTable } from './PivotTable';
 export type { PivotTableOptions, ValuesAxis } from './PivotTable';
 export type { PivotContext } from './context';
-export { applyTheme, applyTokens, setThemeTokens } from './theme';
-export type { ThemeName, ThemeTokens } from './theme';
+export { applyTheme, applyTokens, applyFilterTokens, setThemeTokens } from './theme';
+export type { ThemeName, ThemeTokens, FilterStyleTokens } from './theme';
 
 // Localization
 export { resolveStrings, resolveDirection, DEFAULT_STRINGS } from './i18n';
