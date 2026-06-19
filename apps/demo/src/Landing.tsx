@@ -64,6 +64,18 @@ const FEATURES = [
     body: "Switch rows to a gutter layout — boxed −/+ expanders step through every level, just like a spreadsheet's outline.",
     icon: 'M4 5h16 M4 5v14 M9 9h11 M9 9v10 M14 13h6 M7 5v0 M12 9v0',
   },
+  {
+    color: 'var(--pv-accent)',
+    title: 'SSR & Next.js ready',
+    body: 'No `window` at import time — it renders an empty shell on the server and hydrates on the client. Drops cleanly into Next.js, Remix or Astro.',
+    icon: 'M3 5h18v5H3Z M3 14h18v5H3Z M7 7.5h.01 M7 16.5h.01 M17 7.5h.01 M17 16.5h.01',
+  },
+  {
+    color: 'var(--pv-orange)',
+    title: 'Localized & RTL-aware',
+    body: 'Every label is overridable through a typed `localization` map, with first-class right-to-left layout for Arabic, Hebrew and Persian.',
+    icon: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18 M3 12h18 M12 3c2.6 2.7 2.6 15.3 0 18 M12 3c-2.6 2.7-2.6 15.3 0 18',
+  },
 ];
 
 /**
