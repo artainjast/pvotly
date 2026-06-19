@@ -297,6 +297,26 @@ describe('PivotTable virtualization + freeze', () => {
     pivot.destroy();
   });
 
+  it('width:"content" marks the scroller so the table is not force-filled', () => {
+    const host = mount();
+    const fill = new PivotTable(host, {
+      dataSource: { data: DATA },
+      slice: { rows: [{ uniqueName: 'country' }], measures: [{ uniqueName: 'revenue', aggregation: 'sum' }] },
+    });
+    // Default (fill) does not get the content-width class.
+    expect(host.querySelector('.ph-grid-scroller.ph-width-content')).toBeNull();
+    fill.destroy();
+
+    const host2 = mount();
+    const content = new PivotTable(host2, {
+      dataSource: { data: DATA },
+      slice: { rows: [{ uniqueName: 'country' }], measures: [{ uniqueName: 'revenue', aggregation: 'sum' }] },
+      options: { grid: { width: 'content' } },
+    });
+    expect(host2.querySelector('.ph-grid-scroller.ph-width-content')).toBeTruthy();
+    content.destroy();
+  });
+
   it('persists a column width override across re-renders', () => {
     const host = mount();
     const pivot = new PivotTable(host, {

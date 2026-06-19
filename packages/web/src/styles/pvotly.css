@@ -188,6 +188,10 @@
   width: max-content;
   min-width: 100%;
 }
+/* Width mode 'content': table sizes to its columns, no forced fill. */
+.ph-grid-scroller.ph-width-content .ph-table {
+  min-width: 0;
+}
 .ph-table th,
 .ph-table td {
   border-right: 1px solid var(--ph-border);

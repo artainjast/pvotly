@@ -108,6 +108,10 @@ class GridView {
     // Clamp selection/focus to the new model bounds.
     this.clampState();
     this.scroller.classList.toggle('ph-virtual', this.virtual);
+    // Width mode: 'fill' (default) stretches the table to the container; 'content'
+    // lets it shrink to the sum of its column widths, leaving any slack empty.
+    const widthMode = this.config.options?.grid?.width ?? 'fill';
+    this.scroller.classList.toggle('ph-width-content', widthMode === 'content');
     this.scroller.setAttribute('dir', this.dir);
     this.paint();
   }

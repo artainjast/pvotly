@@ -42,6 +42,7 @@ export function StyledPivot({ data }) {
       <PivotTable
         theme="light"        // "light" | "dark" | "minimal"
         tokens={tokens}      // typed ThemeTokens object (incl. tokens.filters)
+        options={{ grid: { width: 'content' } }} // 'fill' (default) | 'content'
         dataSource={{ data }}
         slice={{
           rows: [{ uniqueName: 'country' }],
@@ -64,6 +65,7 @@ const PRESETS: Record<string, ThemeTokens> = {
 
 export default function Styling() {
   const [theme, setTheme] = useState<ThemeName>('light');
+  const [width, setWidth] = useState<'fill' | 'content'>('fill');
   const [tokens, setTokens] = useState<ThemeTokens>({
     accent: '#2563eb',
     headerBackground: '#eef1f5',
@@ -81,6 +83,13 @@ export default function Styling() {
             <option value="light">light</option>
             <option value="dark">dark</option>
             <option value="minimal">minimal</option>
+          </select>
+        </label>
+        <label style={ctl}>
+          Width
+          <select value={width} onChange={(e) => setWidth(e.target.value as 'fill' | 'content')}>
+            <option value="fill">fill (stretch)</option>
+            <option value="content">content (natural)</option>
           </select>
         </label>
         <label style={ctl}>
@@ -161,6 +170,7 @@ export default function Styling() {
         height={420}
         theme={theme}
         tokens={tokens}
+        options={{ grid: { width } }}
         dataSource={{ data: SALES }}
         slice={{
           rows: [{ uniqueName: 'country' }],

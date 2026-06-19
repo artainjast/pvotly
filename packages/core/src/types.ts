@@ -472,6 +472,14 @@ export interface GridOptions {
    * extra innermost row under every row leaf, with one value column per column leaf.
    */
   measurePosition?: 'columns' | 'rows';
+  /**
+   * How the table sizes itself horizontally.
+   * - `'fill'` (default): the table is at least as wide as its container; when
+   *   the columns' total width is smaller, the table stretches to fill it.
+   * - `'content'`: the table is exactly the sum of its column widths. Leftover
+   *   container space is left empty and columns keep their natural/resized size.
+   */
+  width?: 'fill' | 'content';
 }
 
 export interface PivotOptions {
