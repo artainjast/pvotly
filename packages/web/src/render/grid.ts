@@ -630,7 +630,11 @@ class GridView {
     }
     if (sortable) th.addEventListener('click', () => this.cycleSort(node.uniqueName));
     const idx = m.gutter ? 1 : 0;
-    this.tagFreeze(th, idx, this.makeRowResizer(row.id));
+    // Row-head body cells carry BOTH a row-height resizer (bottom edge) and a
+    // column resizer for the row-header column (right edge). Without the latter,
+    // the first column could only be resized from the lone corner header cell —
+    // dragging its edge anywhere down the body did nothing.
+    this.tagFreeze(th, idx, this.makeRowResizer(row.id), this.makeColResizer(ROWHEAD_COL_ID));
     return th;
   }
 

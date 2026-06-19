@@ -80,6 +80,20 @@ describe('PivotTable (jsdom)', () => {
     pivot.destroy();
   });
 
+  it('puts a column resizer on row-header body cells (first column is draggable)', () => {
+    const host = mount();
+    const pivot = new PivotTable(host, {
+      dataSource: { data: DATA },
+      slice: {
+        rows: [{ uniqueName: 'country' }],
+        measures: [{ uniqueName: 'revenue', aggregation: 'sum' }],
+      },
+    });
+    const handles = host.querySelectorAll('.ph-row-head .ph-col-resize');
+    expect(handles.length).toBeGreaterThan(0);
+    pivot.destroy();
+  });
+
   it('applies a theme attribute', () => {
     const host = mount();
     const pivot = new PivotTable(host, {
