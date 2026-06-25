@@ -442,13 +442,17 @@ blocks. Key exports:
 - data helpers: `parseCsv`, `parseCsvToMatrix`, `inferFieldType`,
   `normalizeValue`, `discoverFields`
 - tree helpers: `buildMemberTree`, `prefixKeys`, `pathKey`, `valueToken`,
-  `flatten`, `flattenCompact`, `flattenClassic`, `flattenFlat` and types
-  `MemberNode`, `PathSeg`, `VisibleNode`
+  `clearInternCache`, `flatten`, `flattenCompact`, `flattenClassic`,
+  `flattenFlat` and types `MemberNode`, `PathSeg`, `VisibleNode`
 - `EventEmitter`
 
 All public types (`PivotConfiguration`, `Slice`, `MeasureConfig`,
 `AggregationType`, `ShowDataAs`, `FieldFilter`, `PivotGrid`, `PivotCell`,
 `HeaderNode`, etc.) are exported from the package root.
+
+Path keys intern distinct member tokens into a compact shared dictionary that is
+reused across builds; `clearInternCache()` releases it (e.g. when the underlying
+data is refreshed in a long-running process).
 
 ## Related packages
 
