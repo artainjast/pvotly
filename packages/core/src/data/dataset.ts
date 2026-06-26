@@ -8,7 +8,7 @@ import type {
   FieldType,
 } from '../types';
 import { datePartCaption, datePartValue, toDate } from '../engine/dateParts';
-import { internToken } from '../engine/tree';
+import { Interner } from '../engine/tree';
 import { parseCsv } from './parseCSV';
 import { discoverFields, inferFieldType, normalizeValue } from './inferTypes';
 
@@ -65,6 +65,13 @@ export class Dataset {
   private readonly memberCache = new Map<string, DataValue[]>();
   private readonly valueColumns = new Map<string, DataValue[]>();
   private readonly tokenColumns = new Map<string, string[]>();
+  /**
+   * Member-token dictionary for this dataset's path keys. Owned here (not a
+   * process-global), so it is released with the dataset and a refresh that builds
+   * a new `Dataset` starts from a clean dictionary — no leak, no cross-dataset
+   * desync. Used by {@link tokenColumn} and by `buildGrid`'s {@link pathKey} calls.
+   */
+  readonly interner = new Interner();
 
   constructor(config: DataSourceConfig) {
     this.mapping = config.mapping ?? {};
@@ -176,7 +183,7 @@ export class Dataset {
   tokenColumn(uniqueName: string): string[] {
     let col = this.tokenColumns.get(uniqueName);
     if (!col) {
-      col = this.resolvedColumn(uniqueName).map(internToken);
+      col = this.resolvedColumn(uniqueName).map((v) => this.interner.token(v));
       this.tokenColumns.set(uniqueName, col);
     }
     return col;

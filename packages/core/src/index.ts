@@ -70,7 +70,7 @@ export {
   prefixKeys,
   pathKey,
   valueToken,
-  clearInternCache,
+  Interner,
   flatten,
   flattenCompact,
   flattenClassic,

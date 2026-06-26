@@ -442,7 +442,7 @@ blocks. Key exports:
 - data helpers: `parseCsv`, `parseCsvToMatrix`, `inferFieldType`,
   `normalizeValue`, `discoverFields`
 - tree helpers: `buildMemberTree`, `prefixKeys`, `pathKey`, `valueToken`,
-  `clearInternCache`, `flatten`, `flattenCompact`, `flattenClassic`,
+  `Interner`, `flatten`, `flattenCompact`, `flattenClassic`,
   `flattenFlat` and types `MemberNode`, `PathSeg`, `VisibleNode`
 - `EventEmitter`
 
@@ -450,9 +450,10 @@ All public types (`PivotConfiguration`, `Slice`, `MeasureConfig`,
 `AggregationType`, `ShowDataAs`, `FieldFilter`, `PivotGrid`, `PivotCell`,
 `HeaderNode`, etc.) are exported from the package root.
 
-Path keys intern distinct member tokens into a compact shared dictionary that is
-reused across builds; `clearInternCache()` releases it (e.g. when the underlying
-data is refreshed in a long-running process).
+Path keys intern distinct member tokens into a compact shared dictionary (an
+`Interner`). Each `Dataset` owns its own interner and reuses it across rebuilds, so
+reconfiguration stays cheap; the dictionary is released with the `Dataset` (a data
+refresh builds a new one), so there is no process-global cache to leak.
 
 ## Related packages
 
