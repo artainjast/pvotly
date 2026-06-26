@@ -48,6 +48,48 @@ interface AxisEntry {
 
 const PERCENT_FORMAT: NumberFormat = { name: '__pct', isPercent: true, decimalPlaces: 2 };
 
+/**
+ * Shared, frozen cell returned for every empty (null-valued) intersection. A pivot
+ * `body` is mostly empty at any real cardinality, so serving one immutable
+ * singleton for blank cells — instead of allocating a distinct {@link PivotCell}
+ * each — bounds heap by the *non-empty* cells while keeping `body`'s dense shape.
+ * Cells that hold a real value (including `0` / `false`) are always their own cell.
+ */
+const EMPTY_CELL: PivotCell = Object.freeze({
+  value: null,
+  displayValue: null,
+  formatted: '',
+  measure: '',
+  rowPath: [],
+  columnPath: [],
+  isTotal: false,
+  isGrandTotal: false,
+});
+
+/**
+ * "Show value as" transforms that write a carried value (running sum, rank,
+ * prev-delta) onto *empty* intersections too. A measure using one needs a real,
+ * mutable cell at its empty intersections — see {@link needsRealEmptyCells}.
+ */
+const SEQUENCE_SHOW_AS: ReadonlySet<string> = new Set([
+  'runningTotalInRow',
+  'runningTotalInColumn',
+  'rankInRow',
+  'rankInColumn',
+  'differenceFromPrevRow',
+  'differenceFromPrevColumn',
+]);
+
+/**
+ * A measure needs a real {@link PivotCell} (not the shared {@link EMPTY_CELL}) at
+ * its empty intersections when something must be written onto / rendered for those
+ * blanks: a sequence-based show-as carries a value onto them, or a format-level
+ * `nullValue` renders text for them. Otherwise blank cells share EMPTY_CELL.
+ */
+function needsRealEmptyCells(m: EffectiveMeasure): boolean {
+  return SEQUENCE_SHOW_AS.has(m.showDataAs) || !!m.format?.nullValue;
+}
+
 function aggKeyOf(aggregation: AggregationName, field: string | null): string {
   return `${aggregation}::${field ?? ''}`;
 }
@@ -212,6 +254,12 @@ export function buildGrid(dataset: Dataset, config: PivotConfiguration): PivotGr
     const rowKey = rowEntry.node.key;
     const colKey = colEntry.node.key;
     const value = measureRaw(rowKey, colKey, m);
+    // Empty intersection -> the shared frozen cell, left out of the index, UNLESS
+    // this measure must render/carry something on blanks (sequence show-as or a
+    // nullValue format). Those get a real, indexed cell so the show-as / format
+    // pass can fill it and getCell returns it; getCell synthesizes a blank on a
+    // miss, so plain empty cells are unchanged for rendering.
+    if (value == null && !needsRealEmptyCells(m)) return EMPTY_CELL;
     const cell: PivotCell = {
       value,
       displayValue: value,
