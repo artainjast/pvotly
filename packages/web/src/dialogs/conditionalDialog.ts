@@ -193,7 +193,8 @@ export function openConditionalDialog(ctx: PivotContext): void {
         const stringRule =
           (op === '=' || op === '!=') && (orig?.op === '=' || orig?.op === '!=') && typeof orig.value === 'string';
         if (stringRule) {
-          if (v1.value.trim() === '') invalid.push(v1);
+          if (!editing?.v1Touched) condition = { op, value: orig.value };
+          else if (v1.value.trim() === '') invalid.push(v1);
           else condition = { op, value: v1.value };
           break;
         }

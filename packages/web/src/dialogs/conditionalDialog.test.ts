@@ -494,6 +494,8 @@ describe('conditional dialog — preserving what the form cannot show', () => {
     mount([
       { condition: { op: 'contains', value: 'foo\nbar' }, format: { color: '#000000' } },
       { condition: { op: 'between', from: 1, to: 2 }, format: {} },
+      { condition: { op: '=', value: 'foo\nbar' }, format: {} },
+      { condition: { op: '!=', value: 'a\nb' }, format: {} },
     ]);
     editRow(0);
     type(ui().fg, '#ffffff');
@@ -501,12 +503,20 @@ describe('conditional dialog — preserving what the form cannot show', () => {
     editRow(1);
     type(ui().v2, '3');
     ui().submit.click();
+    editRow(2);
+    choose(ui().op, '!=');
+    ui().submit.click();
+    editRow(3);
+    choose(ui().op, '=');
+    ui().submit.click();
     apply();
     expect(committed()[0]).toEqual({
       condition: { op: 'contains', value: 'foo\nbar' },
       format: { color: '#ffffff' },
     });
     expect(committed()[1]!.condition).toEqual({ op: 'between', from: 1, to: 3 });
+    expect(committed()[2]!.condition).toEqual({ op: '!=', value: 'foo\nbar' });
+    expect(committed()[3]!.condition).toEqual({ op: '=', value: 'a\nb' });
   });
 
   it('keeps colors the picker cannot show unless they are changed', () => {
