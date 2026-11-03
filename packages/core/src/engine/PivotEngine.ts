@@ -54,6 +54,28 @@ function deepClone(value: unknown): unknown {
 }
 
 /**
+ * Clone a data source WITHOUT deep-copying its raw rows. `data` and `matrix`
+ * get a new outer array, but the row objects are shared: the engine never
+ * mutates them (the {@link Dataset} normalizes into its own records), and
+ * copying every row on each `getConfiguration()` / `reportChange` made those
+ * calls cost O(rows). Treat rows in a returned configuration as read-only.
+ */
+function cloneSource(source: DataSourceConfig): DataSourceConfig {
+  if (!source) return source;
+  const { data, matrix, ...rest } = source;
+  const out = deepClone(rest) as DataSourceConfig;
+  if (data) out.data = data.slice();
+  if (matrix) out.matrix = matrix.slice();
+  return out;
+}
+
+/** {@link clone} for a whole report, sharing raw rows (see {@link cloneSource}). */
+function cloneConfig(config: PivotConfiguration): PivotConfiguration {
+  const { dataSource, ...rest } = config;
+  return { ...(deepClone(rest) as Omit<PivotConfiguration, 'dataSource'>), dataSource: cloneSource(dataSource) };
+}
+
+/**
  * Stateful orchestrator over a {@link Dataset} and a {@link PivotConfiguration}.
  * Owns the report, applies incremental mutations (drag-drop, sort, filter,
  * expand), lazily rebuilds the computed {@link PivotGrid}, and emits events.
@@ -72,7 +94,7 @@ export class PivotEngine extends EventEmitter {
 
   constructor(config: PivotConfiguration) {
     super();
-    this.config = clone(config);
+    this.config = cloneConfig(config);
     this.dataset = new Dataset(this.config.dataSource);
     queueMicrotaskSafe(() => this.emit('ready', undefined));
   }
@@ -80,7 +102,7 @@ export class PivotEngine extends EventEmitter {
   /* ---- data ---------------------------------------------------------- */
 
   updateData(source: DataSourceConfig): void {
-    this.config.dataSource = clone(source);
+    this.config.dataSource = cloneSource(source);
     this.dataset = new Dataset(this.config.dataSource);
     this.invalidate();
     this.emit('dataChange', { records: this.dataset.records.length });
@@ -155,8 +177,13 @@ export class PivotEngine extends EventEmitter {
 
   /* ---- configuration / report --------------------------------------- */
 
+  /**
+   * A copy of the current report. Everything is deep-copied except the raw rows
+   * of `dataSource.data` / `dataSource.matrix`, which are shared with the engine
+   * and must be treated as read-only.
+   */
   getConfiguration(): PivotConfiguration {
-    return clone(this.config);
+    return cloneConfig(this.config);
   }
 
   /** Alias matching common pivot-tool naming. */
@@ -172,10 +199,9 @@ export class PivotEngine extends EventEmitter {
    */
   setConfiguration(config: PivotConfiguration, opts?: { reuseData?: boolean }): void {
     const reuse = opts?.reuseData ?? config.dataSource === this.config.dataSource;
-    this.config = clone(config);
+    this.config = cloneConfig(config);
     if (!reuse) this.dataset = new Dataset(this.config.dataSource);
-    this.invalidate();
-    this.emit('reportChange', this.getConfiguration());
+    this.changed();
   }
 
   setReport(config: PivotConfiguration): void {
@@ -536,7 +562,8 @@ export class PivotEngine extends EventEmitter {
 
   private changed(): void {
     this.invalidate();
-    this.emit('reportChange', this.getConfiguration());
+    // Building the payload copies the report; skip it when nobody listens.
+    if (this.listenerCount('reportChange')) this.emit('reportChange', this.getConfiguration());
   }
 }
 

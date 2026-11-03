@@ -570,3 +570,33 @@ describe('PivotEngine: events', () => {
     expect(payloadA).not.toBe(payloadB);
   });
 });
+
+describe('PivotEngine — configuration copies', () => {
+  it('shares raw data rows but copies everything else', () => {
+    const rows = SALES.map((r) => ({ ...r }));
+    const engine = new PivotEngine({ dataSource: { data: rows }, slice: { rows: [{ uniqueName: 'country' }] } });
+    const a = engine.getConfiguration();
+    const b = engine.getConfiguration();
+    expect(a.dataSource.data).not.toBe(rows);
+    expect(a.dataSource.data).not.toBe(b.dataSource.data);
+    expect(a.dataSource.data![0]).toBe(rows[0]);
+    expect(a.slice).not.toBe(b.slice);
+    a.slice!.rows!.push({ uniqueName: 'category' });
+    expect(engine.getSlice().rows).toEqual([{ uniqueName: 'country' }]);
+  });
+
+  it('builds the reportChange payload only when someone listens', () => {
+    const engine = makeEngine({ rows: [{ uniqueName: 'country' }] });
+    const getConfiguration = vi.spyOn(engine, 'getConfiguration');
+    engine.addToColumns('category');
+    expect(getConfiguration).not.toHaveBeenCalled();
+
+    const listener = vi.fn();
+    const off = engine.on('reportChange', listener);
+    engine.addToRows('category');
+    expect(getConfiguration).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledTimes(1);
+    off();
+    expect(engine.listenerCount('reportChange')).toBe(0);
+  });
+});

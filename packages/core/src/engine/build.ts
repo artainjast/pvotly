@@ -12,21 +12,13 @@ import type {
   ValueFilter,
 } from '../types';
 import { Dataset, compareValues } from '../data/dataset';
-import { Aggregator, AggregatorRegistry, createAggregator } from './aggregate';
+import { AggregatorRegistry } from './aggregate';
 import { compileFormula, CompiledFormula } from './calculated';
 import { resolveCellStyle } from './conditional';
+import { buildCube, type AggSpec } from './cube';
 import { formatValue, resolveFormat } from './format';
-import { buildRecordPredicate, combinePredicates, RecordPredicate } from './filter';
-import {
-  MemberNode,
-  PathSeg,
-  VisibleNode,
-  buildMemberTree,
-  computeLeafCount,
-  flatten,
-  pathKey,
-  prefixKeys,
-} from './tree';
+import { buildValueTest } from './filter';
+import { MemberNode, PathSeg, VisibleNode, computeLeafCount, flatten, pathKey } from './tree';
 
 interface EffectiveMeasure {
   uniqueName: string;
@@ -79,15 +71,10 @@ export function buildGrid(dataset: Dataset, config: PivotConfiguration): PivotGr
   const measures = resolveMeasures(slice.measures ?? [], defaultAggregation, formatsMap, dataset);
 
   /* ---- 1. record-level filtering ------------------------------------- */
-  const predicates: RecordPredicate[] = [];
-  for (const f of [...rowSlice, ...colSlice, ...(slice.reportFilters ?? [])]) {
-    if (f.filter) predicates.push(buildRecordPredicate(dataset, f.uniqueName, f.filter));
-  }
-  const predicate = combinePredicates(predicates);
-  const records = dataset.records.filter(predicate);
+  const selection = selectRecords(dataset, [...rowSlice, ...colSlice, ...(slice.reportFilters ?? [])]);
 
   /* ---- 2. base aggregation plan -------------------------------------- */
-  const baseAggs = new Map<string, { aggregation: AggregationName; field: string | null }>();
+  const baseAggs = new Map<string, AggSpec>();
   const addAgg = (aggregation: AggregationName, field: string | null) => {
     baseAggs.set(aggKeyOf(aggregation, field), { aggregation, field });
   };
@@ -115,39 +102,13 @@ export function buildGrid(dataset: Dataset, config: PivotConfiguration): PivotGr
   }
 
   /* ---- 3. accumulate cross-tab buckets over every prefix ------------- */
-  const cells = new Map<string, Map<string, Map<string, Aggregator>>>();
-  const makeBucket = (): Map<string, Aggregator> => {
-    const m = new Map<string, Aggregator>();
-    for (const [key, { aggregation }] of baseAggs) m.set(key, createAggregator(aggregation, customRegistry));
-    return m;
-  };
-  for (const record of records) {
-    const rowVals = rowFields.map((f) => dataset.resolveValue(record, f));
-    const colVals = colFields.map((f) => dataset.resolveValue(record, f));
-    const rKeys = prefixKeys(rowVals);
-    const cKeys = prefixKeys(colVals);
-    for (const rk of rKeys) {
-      let rowMap = cells.get(rk);
-      if (!rowMap) {
-        rowMap = new Map();
-        cells.set(rk, rowMap);
-      }
-      for (const ck of cKeys) {
-        let bucket = rowMap.get(ck);
-        if (!bucket) {
-          bucket = makeBucket();
-          rowMap.set(ck, bucket);
-        }
-        for (const [key, { field }] of baseAggs) {
-          bucket.get(key)!.push(field ? dataset.resolveValue(record, field) : null, record);
-        }
-      }
-    }
-  }
+  // Also builds both axes' member trees in the same pass over the records.
+  const specIndex = new Map([...baseAggs.keys()].map((key, i) => [key, i]));
+  const cube = buildCube(dataset, rowFields, colFields, selection, [...baseAggs.values()], customRegistry);
 
   const rawAggAt = (rowKey: string, colKey: string, aggregation: AggregationName, field: string | null) => {
-    const agg = cells.get(rowKey)?.get(colKey)?.get(aggKeyOf(aggregation, field));
-    return agg ? agg.value() : null;
+    const spec = specIndex.get(aggKeyOf(aggregation, field));
+    return spec === undefined ? null : cube.value(rowKey, colKey, spec);
   };
   const numericAggAt = (rowKey: string, colKey: string, aggregation: AggregationName, field: string | null) => {
     const v = rawAggAt(rowKey, colKey, aggregation, field);
@@ -165,9 +126,9 @@ export function buildGrid(dataset: Dataset, config: PivotConfiguration): PivotGr
     return numericAggAt(rowKey, colKey, m.aggregation, m.uniqueName);
   };
 
-  /* ---- 4. build + order member trees --------------------------------- */
-  const rowRoots = buildMemberTree(records, rowFields, dataset);
-  const colRoots = buildMemberTree(records, colFields, dataset);
+  /* ---- 4. order member trees ----------------------------------------- */
+  const rowRoots = cube.rows.roots;
+  const colRoots = cube.columns.roots;
   orderAxis(rowRoots, rowSlice, 'row', measures, slice, numericAggAt);
   orderAxis(colRoots, colSlice, 'column', measures, slice, numericAggAt);
   rowRoots.forEach(computeLeafCount);
@@ -272,23 +233,7 @@ export function buildGrid(dataset: Dataset, config: PivotConfiguration): PivotGr
   const columnTree = colRoots.map((n) => toHeaderNode(n, isExpanded));
   const rowLeaves = rowEntries.map((e) => entryToHeaderNode(e));
   const columnLeaves = colEntries.map((e) => entryToHeaderNode(e));
-
-  const getCell = (rowNode: HeaderNode, colNode: HeaderNode, measure: MeasureConfig): PivotCell => {
-    const rk = pathKey(rowNode.path as PathSeg[]);
-    const ck = pathKey(colNode.path as PathSeg[]);
-    const found = cellIndex.get(`${rk}|${ck}|${measure.uniqueName}`);
-    if (found) return found;
-    return {
-      value: null,
-      displayValue: null,
-      formatted: '',
-      measure: measure.uniqueName,
-      rowPath: rowNode.path,
-      columnPath: colNode.path,
-      isTotal: false,
-      isGrandTotal: false,
-    };
-  };
+  const getCell = cellLookup(cellIndex);
 
   return {
     rowTree,
@@ -315,6 +260,64 @@ export function buildGrid(dataset: Dataset, config: PivotConfiguration): PivotGr
 /* -------------------------------------------------------------------------- */
 /* helpers                                                                    */
 /* -------------------------------------------------------------------------- */
+
+/**
+ * Indices of the records that pass every record-level field filter, in record
+ * order. Each filter depends only on its field's value, so it is evaluated once
+ * per distinct member and then applied by dictionary code.
+ */
+function selectRecords(dataset: Dataset, fields: SliceField[]): Int32Array {
+  const tests: Array<{ codes: Int32Array; keep: Uint8Array }> = [];
+  for (const f of fields) {
+    if (!f.filter) continue;
+    const test = buildValueTest(dataset, f.uniqueName, f.filter);
+    if (!test) continue;
+    const { codes, values } = dataset.encoded(f.uniqueName);
+    const keep = new Uint8Array(values.length);
+    for (let c = 0; c < values.length; c++) keep[c] = test(values[c]!) ? 1 : 0;
+    tests.push({ codes, keep });
+  }
+
+  const n = dataset.records.length;
+  if (!tests.length) {
+    const all = new Int32Array(n);
+    for (let i = 0; i < n; i++) all[i] = i;
+    return all;
+  }
+  const selected = new Int32Array(n);
+  let count = 0;
+  for (let i = 0; i < n; i++) {
+    let pass = true;
+    for (let t = 0; t < tests.length && pass; t++) pass = tests[t]!.keep[tests[t]!.codes[i]!] === 1;
+    if (pass) selected[count++] = i;
+  }
+  return selected.subarray(0, count);
+}
+
+/**
+ * `PivotGrid.getCell`. Built outside `buildGrid` so the returned grid keeps only
+ * the cell index alive, not the aggregation state.
+ */
+function cellLookup(
+  cellIndex: Map<string, PivotCell>,
+): (rowNode: HeaderNode, colNode: HeaderNode, measure: MeasureConfig) => PivotCell {
+  return (rowNode, colNode, measure) => {
+    const rk = pathKey(rowNode.path as PathSeg[]);
+    const ck = pathKey(colNode.path as PathSeg[]);
+    const found = cellIndex.get(`${rk}|${ck}|${measure.uniqueName}`);
+    if (found) return found;
+    return {
+      value: null,
+      displayValue: null,
+      formatted: '',
+      measure: measure.uniqueName,
+      rowPath: rowNode.path,
+      columnPath: colNode.path,
+      isTotal: false,
+      isGrandTotal: false,
+    };
+  };
+}
 
 function resolveMeasures(
   configs: MeasureConfig[],

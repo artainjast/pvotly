@@ -105,7 +105,7 @@ Each `HeaderNode` carries `uniqueName`, `value`, `caption`, `level`, `path`,
 const engine = new PivotEngine(config);
 
 engine.getGrid();                 // build (or return cached) PivotGrid
-engine.getConfiguration();        // current report (deep clone)
+engine.getConfiguration();        // current report (copy; data rows are shared, read-only)
 engine.setConfiguration(config);  // replace the whole report
 engine.getFields();               // FieldInfo[] for the field list
 engine.getMembers('Country');     // distinct member values for a field
