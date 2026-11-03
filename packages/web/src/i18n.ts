@@ -106,6 +106,12 @@ export interface UIStrings {
   opNotEquals: string;
   opBetween: string;
   opContains: string;
+  opIsTrue: string;
+  opIsFalse: string;
+  conditionAnd: string;
+  editRule: string;
+  updateRule: string;
+  cancelEdit: string;
 
   /* ---- grid interactions ---- */
   noData: string;
@@ -226,6 +232,12 @@ export const DEFAULT_STRINGS: UIStrings = {
   opNotEquals: 'not equals',
   opBetween: 'between',
   opContains: 'contains',
+  opIsTrue: 'is true',
+  opIsFalse: 'is false',
+  conditionAnd: 'and',
+  editRule: 'Edit rule',
+  updateRule: 'Update rule',
+  cancelEdit: 'Cancel edit',
 
   /* grid interactions */
   noData: 'No data to display',

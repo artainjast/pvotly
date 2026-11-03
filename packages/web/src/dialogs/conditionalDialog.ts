@@ -1,9 +1,20 @@
-import type { ConditionalFormat, ConditionExpr } from '@pvotly/core';
+import type { ConditionalFormat, ConditionExpr, MeasureConfig } from '@pvotly/core';
 import type { PivotContext } from '../context';
 import { h } from '../dom';
 import { resolveStrings, type UIStrings } from '../i18n';
 
-function buildOps(t: UIStrings): Array<{ value: string; label: string; needs: 'one' | 'two' | 'none' }> {
+type OpValue = ConditionExpr['op'];
+
+interface OpDef {
+  value: OpValue;
+  label: string;
+  needs: 'one' | 'two' | 'none';
+}
+
+const DEFAULT_BG = '#fff3cd';
+const DEFAULT_FG = '#664d03';
+
+function buildOps(t: UIStrings): OpDef[] {
   return [
     { value: '>', label: t.opGreaterThan, needs: 'one' },
     { value: '>=', label: t.opGreaterOrEqual, needs: 'one' },
@@ -13,7 +24,29 @@ function buildOps(t: UIStrings): Array<{ value: string; label: string; needs: 'o
     { value: '!=', label: t.opNotEquals, needs: 'one' },
     { value: 'between', label: t.opBetween, needs: 'two' },
     { value: 'contains', label: t.opContains, needs: 'one' },
+    { value: 'isTrue', label: t.opIsTrue, needs: 'none' },
+    { value: 'isFalse', label: t.opIsFalse, needs: 'none' },
   ];
+}
+
+/** A finite number, or `undefined` for empty / malformed / infinite input. */
+function parseNumber(raw: string): number | undefined {
+  if (raw.trim() === '') return undefined;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/** `<input type="color">` only holds `#rrggbb`; anything else can't be shown in the picker. */
+function toPickerColor(value: string | undefined): string | undefined {
+  return value && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : undefined;
+}
+
+/** The rule being edited, plus what the form must keep from it on update. */
+interface EditState {
+  index: number;
+  original: ConditionalFormat;
+  bgTouched: boolean;
+  fgTouched: boolean;
 }
 
 /** Open the conditional-formatting rules editor. */
@@ -23,6 +56,7 @@ export function openConditionalDialog(ctx: PivotContext): void {
   const OPS = buildOps(t);
   const rules: ConditionalFormat[] = (engine.getConfiguration().conditions ?? []).map((c) => ({ ...c }));
   const measures = engine.getSlice().measures ?? [];
+  let editing: EditState | null = null;
 
   const content = h('div', { class: 'ph-cond-dialog' });
   const list = h('div', { class: 'ph-cond-list' });
@@ -31,7 +65,7 @@ export function openConditionalDialog(ctx: PivotContext): void {
     list.replaceChildren();
     if (!rules.length) list.append(h('p', { class: 'ph-hint', text: t.noRulesYet }));
     rules.forEach((rule, i) => {
-      const desc = describeRule(rule, t);
+      const isEditing = editing?.index === i;
       const swatch = h('span', {
         class: 'ph-swatch',
         style: {
@@ -43,76 +77,218 @@ export function openConditionalDialog(ctx: PivotContext): void {
       list.append(
         h(
           'div',
-          { class: 'ph-cond-item' },
+          {
+            class: isEditing ? 'ph-cond-item ph-cond-item-editing' : 'ph-cond-item',
+            attrs: { 'aria-current': isEditing ? 'true' : undefined },
+          },
           swatch,
-          h('span', { class: 'ph-cond-desc', text: desc }),
+          h('span', { class: 'ph-cond-desc', text: describeRule(rule, t, OPS, measures) }),
           h('button', {
-            class: 'ph-btn ph-btn-sm',
+            class: 'ph-btn ph-btn-sm ph-cond-edit',
+            text: '✎',
+            title: t.editRule,
+            attrs: { type: 'button', 'aria-label': t.editRule },
+            on: { click: () => startEdit(i) },
+          }),
+          h('button', {
+            class: 'ph-btn ph-btn-sm ph-cond-remove',
             text: '✕',
-            attrs: { type: 'button' },
-            on: {
-              click: () => {
-                rules.splice(i, 1);
-                renderList();
-              },
-            },
+            title: t.remove,
+            attrs: { type: 'button', 'aria-label': t.remove },
+            on: { click: () => removeRule(i) },
           }),
         ),
       );
     });
   };
 
-  // Add-rule form
+  // Rule form
   const measureSel = h('select', { class: 'ph-input' }) as HTMLSelectElement;
   measureSel.append(h('option', { text: t.allMeasures, attrs: { value: '' } }));
   for (const m of measures) measureSel.append(h('option', { text: m.caption ?? m.uniqueName, attrs: { value: m.uniqueName } }));
+  // Holds a rule's measure that is no longer in the slice, so updating that rule keeps its target.
+  let staleMeasureOption: HTMLOptionElement | null = null;
 
   const opSel = h('select', { class: 'ph-input' }) as HTMLSelectElement;
   for (const op of OPS) opSel.append(h('option', { text: op.label, attrs: { value: op.value } }));
 
   const v1 = h('input', { class: 'ph-input ph-input-num', attrs: { type: 'text', placeholder: t.valuePlaceholder } }) as HTMLInputElement;
   const v2 = h('input', { class: 'ph-input ph-input-num', attrs: { type: 'text', placeholder: t.toPlaceholder } }) as HTMLInputElement;
-  v2.style.display = 'none';
-  opSel.addEventListener('change', () => {
-    const def = OPS.find((o) => o.value === opSel.value);
-    v2.style.display = def?.needs === 'two' ? '' : 'none';
-  });
 
-  const bg = h('input', { attrs: { type: 'color', value: '#fff3cd' } }) as HTMLInputElement;
-  const fg = h('input', { attrs: { type: 'color', value: '#664d03' } }) as HTMLInputElement;
+  const bg = h('input', { attrs: { type: 'color', value: DEFAULT_BG } }) as HTMLInputElement;
+  const fg = h('input', { attrs: { type: 'color', value: DEFAULT_FG } }) as HTMLInputElement;
+
+  const setInvalid = (input: HTMLInputElement, invalid: boolean) => {
+    input.classList.toggle('ph-input-invalid', invalid);
+    if (invalid) input.setAttribute('aria-invalid', 'true');
+    else input.removeAttribute('aria-invalid');
+  };
+  const clearInvalid = () => {
+    setInvalid(v1, false);
+    setInvalid(v2, false);
+  };
+
+  const syncValueInputs = () => {
+    const needs = OPS.find((o) => o.value === opSel.value)?.needs ?? 'one';
+    v1.hidden = needs === 'none';
+    v2.hidden = needs !== 'two';
+  };
+
+  const setMeasure = (name: string | undefined) => {
+    staleMeasureOption?.remove();
+    staleMeasureOption = null;
+    if (name && !measures.some((m) => m.uniqueName === name)) {
+      staleMeasureOption = h('option', { text: name, attrs: { value: name } });
+      measureSel.append(staleMeasureOption);
+    }
+    measureSel.value = name ?? '';
+  };
+
+  opSel.addEventListener('change', () => {
+    clearInvalid();
+    syncValueInputs();
+  });
+  v1.addEventListener('input', () => setInvalid(v1, false));
+  v2.addEventListener('input', () => setInvalid(v2, false));
+  const touch = (key: 'bgTouched' | 'fgTouched') => () => {
+    if (editing) editing[key] = true;
+  };
+  bg.addEventListener('input', touch('bgTouched'));
+  bg.addEventListener('change', touch('bgTouched'));
+  fg.addEventListener('input', touch('fgTouched'));
+  fg.addEventListener('change', touch('fgTouched'));
+
+  /** Build the condition from the form, or mark the offending inputs and return `null`. */
+  const readCondition = (): ConditionExpr | null => {
+    clearInvalid();
+    const op = opSel.value as OpValue;
+    const invalid: HTMLInputElement[] = [];
+    let condition: ConditionExpr | null = null;
+    switch (op) {
+      case 'isTrue':
+      case 'isFalse':
+        condition = { op };
+        break;
+      case 'contains':
+        if (v1.value.trim() === '') invalid.push(v1);
+        else condition = { op, value: v1.value };
+        break;
+      case 'between': {
+        const from = parseNumber(v1.value);
+        const to = parseNumber(v2.value);
+        if (from === undefined) invalid.push(v1);
+        if (to === undefined) invalid.push(v2);
+        if (from !== undefined && to !== undefined) condition = { op, from, to };
+        break;
+      }
+      default: {
+        // Core also allows string operands for = / !=; keep one the user didn't change.
+        const orig = editing?.original.condition;
+        if (
+          (op === '=' || op === '!=') &&
+          (orig?.op === '=' || orig?.op === '!=') &&
+          typeof orig.value === 'string' &&
+          v1.value === orig.value
+        ) {
+          condition = { op, value: orig.value };
+          break;
+        }
+        const value = parseNumber(v1.value);
+        if (value === undefined) invalid.push(v1);
+        else condition = { op, value };
+      }
+    }
+    for (const input of invalid) setInvalid(input, true);
+    invalid[0]?.focus();
+    return condition;
+  };
+
+  const resetForm = () => {
+    editing = null;
+    setMeasure(undefined);
+    opSel.value = '>';
+    v1.value = '';
+    v2.value = '';
+    bg.value = DEFAULT_BG;
+    fg.value = DEFAULT_FG;
+    clearInvalid();
+    syncValueInputs();
+    addBtn.textContent = t.addRule;
+    cancelEditBtn.hidden = true;
+    renderList();
+    measureSel.focus();
+  };
+
+  const startEdit = (index: number) => {
+    const rule = rules[index];
+    if (!rule) return;
+    editing = { index, original: rule, bgTouched: false, fgTouched: false };
+    setMeasure(rule.measure);
+    const c = rule.condition;
+    opSel.value = c.op;
+    v1.value = c.op === 'between' ? String(c.from) : 'value' in c ? String(c.value) : '';
+    v2.value = c.op === 'between' ? String(c.to) : '';
+    bg.value = toPickerColor(rule.format.backgroundColor) ?? DEFAULT_BG;
+    fg.value = toPickerColor(rule.format.color) ?? DEFAULT_FG;
+    clearInvalid();
+    syncValueInputs();
+    addBtn.textContent = t.updateRule;
+    cancelEditBtn.hidden = false;
+    renderList();
+    measureSel.focus();
+  };
+
+  const removeRule = (index: number) => {
+    rules.splice(index, 1);
+    if (editing && index === editing.index) {
+      resetForm();
+      return;
+    }
+    if (editing && index < editing.index) editing.index--;
+    renderList();
+  };
+
+  const submit = () => {
+    const condition = readCondition();
+    if (!condition) return;
+    const original = editing?.original;
+    // Keep style properties the form doesn't expose, and colors the user didn't touch.
+    const format = { ...original?.format };
+    if (!editing || editing.bgTouched) format.backgroundColor = bg.value;
+    if (!editing || editing.fgTouched) format.color = fg.value;
+    const rule: ConditionalFormat = { ...original, measure: measureSel.value || undefined, condition, format };
+    if (editing) rules[editing.index] = rule;
+    else rules.push(rule);
+    resetForm();
+  };
 
   const addBtn = h('button', {
-    class: 'ph-btn',
+    class: 'ph-btn ph-btn-primary',
     text: t.addRule,
     attrs: { type: 'button' },
-    on: {
-      click: () => {
-        const op = opSel.value;
-        const def = OPS.find((o) => o.value === op);
-        let condition: ConditionExpr;
-        if (def?.needs === 'two') {
-          condition = { op: 'between', from: Number(v1.value) || 0, to: Number(v2.value) || 0 };
-        } else if (op === 'contains') {
-          condition = { op: 'contains', value: v1.value };
-        } else {
-          condition = { op: op as never, value: Number(v1.value) || 0 };
-        }
-        const rule: ConditionalFormat = {
-          measure: measureSel.value || undefined,
-          condition,
-          format: { backgroundColor: bg.value, color: fg.value },
-        };
-        rules.push(rule);
-        renderList();
-      },
-    },
+    on: { click: submit },
   });
+
+  const cancelEditBtn = h('button', {
+    class: 'ph-btn ph-cond-cancel-edit',
+    text: t.cancelEdit,
+    attrs: { type: 'button' },
+    on: { click: () => resetForm() },
+  });
+  cancelEditBtn.hidden = true;
+  syncValueInputs();
 
   const form = h(
     'div',
     { class: 'ph-cond-form' },
-    h('div', { class: 'ph-row' }, measureSel, opSel, v1, v2),
-    h('div', { class: 'ph-row' }, h('span', { text: t.fill }), bg, h('span', { text: t.text }), fg, addBtn),
+    measureSel,
+    opSel,
+    v1,
+    v2,
+    h('label', { class: 'ph-cond-color' }, h('span', { text: t.fill }), bg),
+    h('label', { class: 'ph-cond-color' }, h('span', { text: t.text }), fg),
+    addBtn,
+    cancelEditBtn,
   );
 
   const footer = h(
@@ -139,28 +315,29 @@ export function openConditionalDialog(ctx: PivotContext): void {
 
   renderList();
   content.append(list, form, footer);
-  ctx.openDialog(content, t.conditionalDialogTitle);
+  ctx.openDialog(content, t.conditionalDialogTitle, { width: '760px' });
 }
 
-function describeRule(rule: ConditionalFormat, t: UIStrings): string {
-  const target = rule.measure ?? t.allMeasures;
+function describeRule(
+  rule: ConditionalFormat,
+  t: UIStrings,
+  ops: readonly OpDef[],
+  measures: readonly MeasureConfig[],
+): string {
+  const target = rule.measure
+    ? measures.find((m) => m.uniqueName === rule.measure)?.caption || rule.measure
+    : t.allMeasures;
   const c = rule.condition;
-  let cond = '';
+  const label = ops.find((o) => o.value === c.op)?.label ?? c.op;
   switch (c.op) {
     case 'between':
-      cond = `between ${c.from} and ${c.to}`;
-      break;
+      return `${target} ${label} ${c.from} ${t.conditionAnd} ${c.to}`;
     case 'contains':
-      cond = `contains "${c.value}"`;
-      break;
+      return `${target} ${label} "${c.value}"`;
     case 'isTrue':
-      cond = 'is true';
-      break;
     case 'isFalse':
-      cond = 'is false';
-      break;
+      return `${target} ${label}`;
     default:
-      cond = `${c.op} ${(c as { value: unknown }).value}`;
+      return `${target} ${label} ${c.value}`;
   }
-  return `${target} ${cond}`;
 }
