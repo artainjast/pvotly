@@ -441,11 +441,12 @@ describe('conditional dialog — preserving what the form cannot show', () => {
     expect(committed()[0]!.measure).toBe('ghost');
   });
 
-  it('keeps unchanged string operands of = / != and parses changed ones', () => {
+  it('keeps string = / != rules as strings while editing', () => {
     mount([
       { condition: { op: '=', value: '5' }, format: {} },
       { condition: { op: '!=', value: 'abc' }, format: {} },
-      { condition: { op: '=', value: 'x' }, format: {} },
+      { condition: { op: '=', value: 'USA' }, format: {} },
+      { condition: { op: '=', value: '001' }, format: {} },
     ]);
     editRow(0);
     ui().submit.click();
@@ -453,14 +454,59 @@ describe('conditional dialog — preserving what the form cannot show', () => {
     choose(ui().op, '=');
     ui().submit.click();
     editRow(2);
-    type(ui().v1, '8');
+    type(ui().v1, 'Canada');
+    ui().submit.click();
+    editRow(3);
+    type(ui().v1, '002');
     ui().submit.click();
     apply();
     expect(committed().map((r) => r.condition)).toEqual([
       { op: '=', value: '5' },
       { op: '=', value: 'abc' },
-      { op: '=', value: 8 },
+      { op: '=', value: 'Canada' },
+      { op: '=', value: '002' },
     ]);
+  });
+
+  it('rejects a blank string operand and keeps numeric = rules numeric', () => {
+    mount([
+      { condition: { op: '=', value: 'USA' }, format: {} },
+      { condition: { op: '=', value: 5 }, format: {} },
+    ]);
+    editRow(0);
+    type(ui().v1, '  ');
+    ui().submit.click();
+    expect(isInvalid(ui().v1)).toBe(true);
+    editRow(1);
+    type(ui().v1, 'abc');
+    ui().submit.click();
+    expect(isInvalid(ui().v1)).toBe(true);
+    type(ui().v1, '6');
+    ui().submit.click();
+    apply();
+    expect(committed().map((r) => r.condition)).toEqual([
+      { op: '=', value: 'USA' },
+      { op: '=', value: 6 },
+    ]);
+  });
+
+  it('keeps operands the inputs cannot show unless they are edited', () => {
+    mount([
+      { condition: { op: 'contains', value: 'foo\nbar' }, format: { color: '#000000' } },
+      { condition: { op: 'between', from: 1, to: 2 }, format: {} },
+    ]);
+    editRow(0);
+    type(ui().fg, '#ffffff');
+    ui().submit.click();
+    editRow(1);
+    type(ui().v2, '3');
+    ui().submit.click();
+    apply();
+    expect(committed()[0]).toEqual({
+      condition: { op: 'contains', value: 'foo\nbar' },
+      format: { color: '#ffffff' },
+    });
+    expect(committed()[1]!.condition).toEqual({ op: 'between', from: 1, to: 3 });
   });
 
   it('keeps colors the picker cannot show unless they are changed', () => {

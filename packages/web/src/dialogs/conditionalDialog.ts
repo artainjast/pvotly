@@ -45,6 +45,8 @@ function toPickerColor(value: string | undefined): string | undefined {
 interface EditState {
   index: number;
   original: ConditionalFormat;
+  v1Touched: boolean;
+  v2Touched: boolean;
   bgTouched: boolean;
   fgTouched: boolean;
 }
@@ -148,11 +150,13 @@ export function openConditionalDialog(ctx: PivotContext): void {
     clearInvalid();
     syncValueInputs();
   });
-  v1.addEventListener('input', () => setInvalid(v1, false));
-  v2.addEventListener('input', () => setInvalid(v2, false));
-  const touch = (key: 'bgTouched' | 'fgTouched') => () => {
+  const touch = (key: 'v1Touched' | 'v2Touched' | 'bgTouched' | 'fgTouched') => () => {
     if (editing) editing[key] = true;
   };
+  v1.addEventListener('input', () => setInvalid(v1, false));
+  v2.addEventListener('input', () => setInvalid(v2, false));
+  v1.addEventListener('input', touch('v1Touched'));
+  v2.addEventListener('input', touch('v2Touched'));
   bg.addEventListener('input', touch('bgTouched'));
   bg.addEventListener('change', touch('bgTouched'));
   fg.addEventListener('input', touch('fgTouched'));
@@ -162,6 +166,9 @@ export function openConditionalDialog(ctx: PivotContext): void {
   const readCondition = (): ConditionExpr | null => {
     clearInvalid();
     const op = opSel.value as OpValue;
+    const orig = editing?.original.condition;
+    // Untouched operands may hold values the inputs can't show (e.g. newlines): keep them as-is.
+    if (editing && orig?.op === op && !editing.v1Touched && !editing.v2Touched) return { ...orig };
     const invalid: HTMLInputElement[] = [];
     let condition: ConditionExpr | null = null;
     switch (op) {
@@ -182,15 +189,12 @@ export function openConditionalDialog(ctx: PivotContext): void {
         break;
       }
       default: {
-        // Core also allows string operands for = / !=; keep one the user didn't change.
-        const orig = editing?.original.condition;
-        if (
-          (op === '=' || op === '!=') &&
-          (orig?.op === '=' || orig?.op === '!=') &&
-          typeof orig.value === 'string' &&
-          v1.value === orig.value
-        ) {
-          condition = { op, value: orig.value };
+        // Core also matches = / != against strings; an existing string rule stays a string rule.
+        const stringRule =
+          (op === '=' || op === '!=') && (orig?.op === '=' || orig?.op === '!=') && typeof orig.value === 'string';
+        if (stringRule) {
+          if (v1.value.trim() === '') invalid.push(v1);
+          else condition = { op, value: v1.value };
           break;
         }
         const value = parseNumber(v1.value);
@@ -222,7 +226,7 @@ export function openConditionalDialog(ctx: PivotContext): void {
   const startEdit = (index: number) => {
     const rule = rules[index];
     if (!rule) return;
-    editing = { index, original: rule, bgTouched: false, fgTouched: false };
+    editing = { index, original: rule, v1Touched: false, v2Touched: false, bgTouched: false, fgTouched: false };
     setMeasure(rule.measure);
     const c = rule.condition;
     opSel.value = c.op;
