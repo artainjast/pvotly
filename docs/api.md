@@ -80,7 +80,7 @@ class PivotEngine extends EventEmitter {
 
 | Method               | Signature                                                  | Description                               |
 | -------------------- | --------------------------------------------------------- | ----------------------------------------- |
-| `getConfiguration`   | `(): PivotConfiguration`                                  | Deep clone of the current report.         |
+| `getConfiguration`   | `(): PivotConfiguration`                                  | Copy of the current report. Raw rows in `dataSource.data` / `matrix` are shared with the engine; treat them as read-only. |
 | `getReport`          | `(): PivotConfiguration`                                  | Alias for `getConfiguration`.             |
 | `setConfiguration`   | `(config: PivotConfiguration): void`                     | Replace the whole report.                 |
 | `setReport`          | `(config: PivotConfiguration): void`                     | Alias for `setConfiguration`.             |

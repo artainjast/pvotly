@@ -8,6 +8,7 @@ import type {
   FieldType,
 } from '../types';
 import { datePartCaption, datePartValue, toDate } from '../engine/dateParts';
+import { asNumber } from '../engine/aggregate';
 import { parseCsv } from './parseCSV';
 import { discoverFields, inferFieldType, normalizeValue } from './inferTypes';
 
@@ -53,6 +54,17 @@ interface ParsedName {
 }
 
 /**
+ * Dictionary-encoded column: `values[codes[i]]` is the resolved value of a field
+ * for record `i`. Values are distinct members in first-seen order; two values
+ * share a code exactly when they are the same member (same type and value, Dates
+ * by timestamp).
+ */
+export interface EncodedColumn {
+  codes: Int32Array;
+  values: DataValue[];
+}
+
+/**
  * Normalized, queryable view over a data source. Owns type inference, value
  * normalization, date-part resolution, member enumeration and captions.
  */
@@ -62,6 +74,12 @@ export class Dataset {
   private readonly types = new Map<string, FieldType>();
   private readonly fieldOrder: string[];
   private readonly memberCache = new Map<string, DataValue[]>();
+  // Per-field caches. Records are never mutated after construction, so these
+  // stay valid for the life of the dataset.
+  private readonly nameCache = new Map<string, Readonly<ParsedName>>();
+  private readonly valueCache = new Map<string, DataValue[]>();
+  private readonly encodedCache = new Map<string, EncodedColumn>();
+  private readonly numberCache = new Map<string, Float64Array>();
 
   constructor(config: DataSourceConfig) {
     this.mapping = config.mapping ?? {};
@@ -103,6 +121,15 @@ export class Dataset {
 
   /** Split `field.part` into its components, validating the part. */
   parseName(uniqueName: string): ParsedName {
+    let parsed = this.nameCache.get(uniqueName);
+    if (!parsed) {
+      parsed = Object.freeze(this.parseNameUncached(uniqueName));
+      this.nameCache.set(uniqueName, parsed);
+    }
+    return parsed;
+  }
+
+  private parseNameUncached(uniqueName: string): ParsedName {
     const dot = uniqueName.lastIndexOf('.');
     if (dot > 0) {
       const maybePart = uniqueName.slice(dot + 1);
@@ -151,20 +178,89 @@ export class Dataset {
     return baseCaption;
   }
 
+  /** Call `visit` with the resolved value of a (possibly derived) field for every record. */
+  private resolveAll(uniqueName: string, visit: (value: DataValue, index: number) => void): void {
+    const cached = this.valueCache.get(uniqueName);
+    if (cached) {
+      for (let i = 0; i < cached.length; i++) visit(cached[i]!, i);
+      return;
+    }
+    const { field, part } = this.parseName(uniqueName);
+    const records = this.records;
+    for (let i = 0; i < records.length; i++) {
+      const raw = records[i]![field];
+      if (part) {
+        const d = toDate(raw);
+        visit(d ? datePartValue(d, part) : null, i);
+      } else {
+        visit(raw ?? null, i);
+      }
+    }
+  }
+
+  /** Resolved value of a (possibly derived) field for every record, computed once. */
+  values(uniqueName: string): DataValue[] {
+    let column = this.valueCache.get(uniqueName);
+    if (!column) {
+      const out = new Array<DataValue>(this.records.length);
+      this.resolveAll(uniqueName, (v, i) => {
+        out[i] = v;
+      });
+      column = out;
+      this.valueCache.set(uniqueName, column);
+    }
+    return column;
+  }
+
+  /** Dictionary-encoded view of a field (see {@link EncodedColumn}), computed once. */
+  encoded(uniqueName: string): EncodedColumn {
+    let column = this.encodedCache.get(uniqueName);
+    if (!column) {
+      const codes = new Int32Array(this.records.length);
+      const dictionary: DataValue[] = [];
+      // Dates are keyed by timestamp in their own map so they never collide with numbers.
+      const byValue = new Map<DataValue, number>();
+      const byTime = new Map<number, number>();
+      this.resolveAll(uniqueName, (v, i) => {
+        const isDate = v instanceof Date;
+        const index = (isDate ? byTime : byValue) as Map<unknown, number>;
+        const key = isDate ? v.getTime() : v;
+        let code = index.get(key);
+        if (code === undefined) {
+          code = dictionary.length;
+          dictionary.push(v);
+          index.set(key, code);
+        }
+        codes[i] = code;
+      });
+      column = { codes, values: dictionary };
+      this.encodedCache.set(uniqueName, column);
+    }
+    return column;
+  }
+
+  /**
+   * Numeric view of a field for the built-in numeric reducers: the value each
+   * record contributes, or `NaN` where it contributes nothing (null, blank,
+   * non-numeric, non-finite).
+   */
+  numbers(uniqueName: string): Float64Array {
+    let column = this.numberCache.get(uniqueName);
+    if (!column) {
+      const out = new Float64Array(this.records.length);
+      this.resolveAll(uniqueName, (v, i) => {
+        out[i] = asNumber(v) ?? NaN;
+      });
+      column = out;
+      this.numberCache.set(uniqueName, column);
+    }
+    return column;
+  }
+
   /** Distinct, sorted member values for a field. */
   getMembers(uniqueName: string): DataValue[] {
     if (this.memberCache.has(uniqueName)) return this.memberCache.get(uniqueName)!;
-    const seen = new Set<DataValue>();
-    const members: DataValue[] = [];
-    for (const record of this.records) {
-      const v = this.resolveValue(record, uniqueName);
-      const key = v instanceof Date ? v.getTime() : v;
-      if (!seen.has(key as DataValue)) {
-        seen.add(key as DataValue);
-        members.push(v);
-      }
-    }
-    members.sort(compareValues);
+    const members = [...this.encoded(uniqueName).values].sort(compareValues);
     this.memberCache.set(uniqueName, members);
     return members;
   }
@@ -215,6 +311,10 @@ export class Dataset {
   }
 }
 
+// Same ordering as `localeCompare(b, undefined, options)`, without building a
+// collator on every comparison.
+const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
 /** Total ordering across mixed primitive/date values (nulls last). */
 export function compareValues(a: DataValue, b: DataValue): number {
   if (a === b) return 0;
@@ -224,5 +324,5 @@ export function compareValues(a: DataValue, b: DataValue): number {
   const bv = b instanceof Date ? b.getTime() : b;
   if (typeof av === 'number' && typeof bv === 'number') return av - bv;
   if (typeof av === 'boolean' && typeof bv === 'boolean') return av === bv ? 0 : av ? 1 : -1;
-  return String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: 'base' });
+  return collator.compare(String(av), String(bv));
 }

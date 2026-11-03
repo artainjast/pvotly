@@ -548,3 +548,52 @@ describe('compareValues — total ordering with nulls last', () => {
     expect(compareValues('a', 'A')).toBe(0);
   });
 });
+
+describe('Dataset columns', () => {
+  const ds = new Dataset({
+    data: [
+      { k: 'b', n: 2, d: '2021-03-04', s: '3' },
+      { k: 'a', n: null, d: null, s: '' },
+      { k: 'b', n: -1.5, d: '2021-03-04', s: 'x' },
+      { k: null, n: 4, d: '2022-01-01', s: '5' },
+    ],
+    mapping: { d: { type: 'date' }, s: { type: 'string' } },
+  });
+
+  it('values() resolves every record once, including date parts', () => {
+    expect(ds.values('k')).toEqual(['b', 'a', 'b', null]);
+    expect(ds.values('d.year')).toEqual([2021, null, 2021, 2022]);
+    expect(ds.values('k')).toBe(ds.values('k'));
+  });
+
+  it('encoded() assigns codes in first-seen order, Dates by timestamp', () => {
+    const k = ds.encoded('k');
+    expect(k.values).toEqual(['b', 'a', null]);
+    expect([...k.codes]).toEqual([0, 1, 0, 2]);
+    const d = ds.encoded('d');
+    expect(d.values).toHaveLength(3);
+    expect([...d.codes]).toEqual([0, 1, 0, 2]);
+  });
+
+  it('encoded() keeps values of different types apart', () => {
+    const mixed = new Dataset({ data: [{ v: 1 }, { v: '1' }, { v: 1 }], mapping: { v: { type: 'string' } } });
+    const typed = new Dataset({ data: [{ v: true }, { v: 1 }, { v: true }] });
+    expect(new Set(mixed.encoded('v').values).size).toBe(mixed.encoded('v').values.length);
+    expect(typed.encoded('v').codes[0]).toBe(typed.encoded('v').codes[2]);
+  });
+
+  it('numbers() matches the numeric reducers: NaN where a record contributes nothing', () => {
+    expect([...ds.numbers('n')]).toEqual([2, NaN, -1.5, 4]);
+    expect([...ds.numbers('s')]).toEqual([3, NaN, NaN, 5]);
+  });
+
+  it('parseName() is cached and stays correct', () => {
+    expect(ds.parseName('d.year')).toBe(ds.parseName('d.year'));
+    expect(ds.parseName('d.year')).toEqual({ field: 'd', part: 'year' });
+    expect(ds.parseName('k')).toEqual({ field: 'k' });
+  });
+
+  it('getMembers() returns distinct sorted members', () => {
+    expect(ds.getMembers('k')).toEqual(['a', 'b', null]);
+  });
+});

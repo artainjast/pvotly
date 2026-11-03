@@ -27,6 +27,11 @@ export class EventEmitter {
     return this.on(event, wrapped);
   }
 
+  /** Number of handlers currently subscribed to `event`. */
+  listenerCount(event: PivotEventName): number {
+    return this.handlers.get(event)?.size ?? 0;
+  }
+
   off<K extends PivotEventName>(event: K, handler: Handler<K>): void {
     this.handlers.get(event)?.delete(handler as (payload: any) => void);
   }
