@@ -452,6 +452,10 @@
   color: var(--ph-accent-fg);
   border-color: var(--ph-accent);
 }
+.ph-btn-primary:hover {
+  background: var(--ph-accent);
+  filter: brightness(1.1);
+}
 .ph-btn-sm {
   padding: 3px 8px;
   font-size: 11px;
@@ -552,8 +556,18 @@
   border: 1px solid var(--ph-border);
   border-radius: 5px;
 }
+.ph-cond-item > .ph-swatch,
+.ph-cond-item > .ph-btn {
+  flex: none;
+}
+.ph-cond-item-editing {
+  background: var(--ph-hover);
+  border-color: var(--ph-accent);
+}
 .ph-cond-desc {
   flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .ph-swatch {
   display: inline-flex;
@@ -566,8 +580,50 @@
   font-size: 11px;
 }
 .ph-cond-form {
-  border-top: 1px solid var(--ph-border);
-  padding-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  background: var(--ph-bg-alt);
+  border: 1px solid var(--ph-border);
+  border-radius: var(--ph-radius);
+}
+.ph-cond-form [hidden] {
+  display: none;
+}
+.ph-cond-form > select.ph-input {
+  flex: 1 1 120px;
+  width: auto;
+  min-width: 0;
+}
+.ph-cond-form > .ph-input-num {
+  flex: 0 1 90px;
+  min-width: 0;
+}
+.ph-cond-form > .ph-btn {
+  flex: none;
+  max-width: 100%;
+}
+.ph-cond-form .ph-input-invalid {
+  border-color: var(--ph-danger, #dc2626);
+  outline: 1px solid var(--ph-danger, #dc2626);
+}
+.ph-cond-color {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.ph-cond-color input[type='color'] {
+  flex: none;
+  width: 32px;
+  height: 28px;
+  padding: 1px;
+  border: 1px solid var(--ph-border);
+  border-radius: 4px;
+  background: var(--ph-bg);
+  cursor: pointer;
 }
 
 /* ---- fields dialog (modal configurator) ---- */
