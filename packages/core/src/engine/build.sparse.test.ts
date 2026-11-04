@@ -94,4 +94,37 @@ describe('sparse body (empty cells share a frozen singleton)', () => {
     // Real cells (not the shared singleton) so the running-total pass can fill them.
     expect(new Set(empties).size).toBe(empties.length);
   });
+
+  it('getCell derives total flags for empty subtotal/grand-total cells from headers', () => {
+    const g = build();
+    const m = g.measures[0]!;
+    let sawEmptyTotal = false;
+    for (const r of g.rowLeaves) {
+      for (const c of g.columnLeaves) {
+        const cell = g.getCell(r, c, m);
+        if (cell.value != null) continue;
+        // Flags must mirror the header nodes, not be hardcoded false.
+        expect(cell.isTotal).toBe(!!(r.isTotal || c.isTotal));
+        expect(cell.isGrandTotal).toBe(!!(r.isGrandTotal || c.isGrandTotal));
+        if (cell.isTotal || cell.isGrandTotal) sawEmptyTotal = true;
+      }
+    }
+    // (W, MEX) has only 2024 data, so its cell under a 2023 subtotal column is an
+    // empty cell sitting in a total column -> proves the flag survives sharing.
+    expect(sawEmptyTotal).toBe(true);
+  });
+
+  it('materializes empty cells for a conditional rule matching null, and applies its style', () => {
+    // `!= 0` matches null (hasNum is false for null), so blanks must be styled.
+    const g = build({
+      conditions: [
+        { measure: 'sales', condition: { op: '!=', value: 0 }, format: { backgroundColor: '#fee' } },
+      ],
+    });
+    const empties = g.body.flat().filter((c) => c.value == null);
+    expect(empties.length).toBeGreaterThan(1);
+    // Real cells (not the shared singleton) so the condition pass can style them.
+    expect(new Set(empties).size).toBe(empties.length);
+    for (const c of empties) expect(c.style?.backgroundColor).toBe('#fee');
+  });
 });

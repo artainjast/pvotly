@@ -2,6 +2,7 @@ import type {
   AggregationName,
   DataValue,
   GridType,
+  ConditionalFormat,
   MeasureConfig,
   NumberFormat,
   PivotCell,
@@ -75,11 +76,20 @@ const SEQUENCE_SHOW_AS: ReadonlySet<string> = new Set([
 /**
  * A measure needs a real {@link PivotCell} (not the shared {@link EMPTY_CELL}) at
  * its empty intersections when something must be written onto / rendered for those
- * blanks: a sequence-based show-as carries a value onto them, or a format-level
- * `nullValue` renders text for them. Otherwise blank cells share EMPTY_CELL.
+ * blanks: a sequence-based show-as carries a value onto them, a format-level
+ * `nullValue` renders text for them, or a conditional rule matches `null` and
+ * styles them. Otherwise blank cells share EMPTY_CELL. Cheap enough to evaluate
+ * once per measure (the `resolveCellStyle` probe runs once, not per cell).
  */
-function needsRealEmptyCells(m: EffectiveMeasure): boolean {
-  return SEQUENCE_SHOW_AS.has(m.showDataAs) || !!m.format?.nullValue;
+function needsRealEmptyCells(
+  m: EffectiveMeasure,
+  conditions: ConditionalFormat[] | undefined,
+): boolean {
+  return (
+    SEQUENCE_SHOW_AS.has(m.showDataAs) ||
+    !!m.format?.nullValue ||
+    resolveCellStyle(null, m.uniqueName, conditions) !== undefined
+  );
 }
 
 function aggKeyOf(aggregation: AggregationName, field: string | null): string {
@@ -210,17 +220,24 @@ export function buildGrid(dataset: Dataset, config: PivotConfiguration): PivotGr
   const cellIndex = new Map<string, PivotCell>();
   const body: PivotCell[][] = [];
 
+  // Measures whose blanks must be real cells (not EMPTY_CELL) — computed once per
+  // measure, since needsRealEmptyCells probes resolveCellStyle(null, ...).
+  const realEmptyMeasures = new Set(
+    measures.filter((m) => needsRealEmptyCells(m, conditions)).map((m) => m.uniqueName),
+  );
+
   // Create (and index) a single body cell for a row/column/measure triple.
   const makeCell = (rowEntry: AxisEntry, colEntry: AxisEntry, m: EffectiveMeasure): PivotCell => {
     const rowKey = rowEntry.node.key;
     const colKey = colEntry.node.key;
     const value = measureRaw(rowKey, colKey, m);
     // Empty intersection -> the shared frozen cell, left out of the index, UNLESS
-    // this measure must render/carry something on blanks (sequence show-as or a
-    // nullValue format). Those get a real, indexed cell so the show-as / format
-    // pass can fill it and getCell returns it; getCell synthesizes a blank on a
-    // miss, so plain empty cells are unchanged for rendering.
-    if (value == null && !needsRealEmptyCells(m)) return EMPTY_CELL;
+    // this measure must render/carry something on blanks (sequence show-as, a
+    // nullValue format, or a conditional rule that matches null). Those get a real,
+    // indexed cell so the show-as / format / condition pass can fill it and getCell
+    // returns it; getCell synthesizes a blank on a miss, so plain empty cells are
+    // unchanged for rendering.
+    if (value == null && !realEmptyMeasures.has(m.uniqueName)) return EMPTY_CELL;
     const cell: PivotCell = {
       value,
       displayValue: value,
@@ -354,6 +371,9 @@ function cellLookup(
     const ck = pathKey(colNode.path as PathSeg[]);
     const found = cellIndex.get(`${rk}|${ck}|${measure.uniqueName}`);
     if (found) return found;
+    // A blank synthesized for an empty intersection. Derive total flags from the
+    // header nodes so an empty subtotal/grand-total cell keeps the shading it had
+    // before empty cells were shared (the renderer reads these for cell classes).
     return {
       value: null,
       displayValue: null,
@@ -361,8 +381,8 @@ function cellLookup(
       measure: measure.uniqueName,
       rowPath: rowNode.path,
       columnPath: colNode.path,
-      isTotal: false,
-      isGrandTotal: false,
+      isTotal: !!(rowNode.isTotal || colNode.isTotal),
+      isGrandTotal: !!(rowNode.isGrandTotal || colNode.isGrandTotal),
     };
   };
 }
