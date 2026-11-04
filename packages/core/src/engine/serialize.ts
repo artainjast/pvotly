@@ -38,6 +38,8 @@ export function deserializeGrid(grid: SerializedGrid): PivotGrid {
     const ck = pathKey(colNode.path as PathSeg[]);
     const found = index.get(`${rk}|${ck}|${measure.uniqueName}`);
     if (found) return found;
+    // Blank for an empty intersection — derive total flags from the header nodes so
+    // empty subtotal/grand-total cells keep their shading (mirrors build.ts).
     return {
       value: null,
       displayValue: null,
@@ -45,8 +47,8 @@ export function deserializeGrid(grid: SerializedGrid): PivotGrid {
       measure: measure.uniqueName,
       rowPath: rowNode.path,
       columnPath: colNode.path,
-      isTotal: false,
-      isGrandTotal: false,
+      isTotal: !!(rowNode.isTotal || colNode.isTotal),
+      isGrandTotal: !!(rowNode.isGrandTotal || colNode.isGrandTotal),
     };
   };
 
