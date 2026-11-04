@@ -31,4 +31,16 @@ export default tseslint.config(
       globals: { console: 'readonly', process: 'readonly', module: 'writable', require: 'readonly' },
     },
   },
+  {
+    // Benchmarks are Node programs (use process/performance/global/console).
+    files: ['**/benchmark/**/*.{mjs,js,cjs}'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        performance: 'readonly',
+        global: 'readonly',
+      },
+    },
+  },
 );

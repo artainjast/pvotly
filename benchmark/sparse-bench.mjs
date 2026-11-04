@@ -43,11 +43,11 @@ function run(label) {
   const heap = heapMB() - before;
 
   const t1 = performance.now();
-  let sum = 0;
+  let _sum = 0; // touch cells so getCell isn't optimized away; value itself unused
   for (let r = 0; r < Math.min(50, grid.rowLeaves.length); r++) {
     for (let c = 0; c < Math.min(20, grid.columnLeaves.length); c++) {
       const v = grid.getCell(grid.rowLeaves[r], grid.columnLeaves[c], grid.measures[0]).value;
-      if (typeof v === 'number') sum += v;
+      if (typeof v === 'number') _sum += v;
     }
   }
   const vp = performance.now() - t1;
